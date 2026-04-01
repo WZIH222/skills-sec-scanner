@@ -1,0 +1,19 @@
+{
+  "id": "network-axios",
+  "name": "Detect axios calls",
+  "severity": "medium",
+  "category": "network",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "axios",
+      "property": "get"
+    }
+  },
+  "message": "axios can exfiltrate data to external servers",
+  "references": [
+    "https://axios-http.com/docs/example"
+  ]
+}

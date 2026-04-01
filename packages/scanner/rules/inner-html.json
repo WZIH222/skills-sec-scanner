@@ -1,0 +1,18 @@
+{
+  "id": "no-inner-html",
+  "name": "No innerHTML Assignment",
+  "severity": "high",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "property": "innerHTML"
+    }
+  },
+  "message": "Using innerHTML can lead to XSS vulnerabilities. Consider using textContent or createElement instead.",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML"
+  ]
+}

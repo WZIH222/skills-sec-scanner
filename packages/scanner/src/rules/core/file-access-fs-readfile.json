@@ -1,0 +1,19 @@
+{
+  "id": "file-access-fs-readfile",
+  "name": "Detect fs.readFileSync() calls",
+  "severity": "low",
+  "category": "file-access",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "fs",
+      "property": "readFileSync"
+    }
+  },
+  "message": "fs.readFileSync() can read sensitive files",
+  "references": [
+    "https://nodejs.org/api/fs.html#fsreadfilesyncpath-options"
+  ]
+}

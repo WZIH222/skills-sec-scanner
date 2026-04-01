@@ -1,0 +1,23 @@
+# Stage 1: Build
+FROM node:24-bookworm AS builder
+WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+COPY . .
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+RUN echo "shamefully-hoist=true" > .npmrc
+RUN pnpm install
+# Use PostgreSQL schema for Docker builds
+RUN cp packages/database/prisma/schema.pgsql.prisma packages/database/prisma/schema.prisma
+RUN pnpm --filter @skills-sec/database generate
+RUN pnpm --filter @skills-sec/api build
+
+# Stage 2: Production
+FROM node:20-bookworm-slim AS production
+WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl libssl3 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/packages/database ./packages/database
+ENV NODE_ENV=production
+EXPOSE 3001
+CMD ["sh", "-c", "node /app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js db push --schema ./packages/database/prisma/schema.prisma --skip-generate && node --input-type=commonjs --no-warnings apps/api/dist/main.js"]

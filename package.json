@@ -1,0 +1,53 @@
+{
+  "name": "skills-sec",
+  "version": "0.1.0",
+  "description": "Skills Security Scanner (S³) - Detect security threats in AI Skills files",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @skills-sec/scanner dev\" \"pnpm --filter @skills-sec/api dev\" \"pnpm --filter @skills-sec/web dev\"",
+    "dev:web": "pnpm --filter @skills-sec/web dev",
+    "dev:api": "pnpm --filter @skills-sec/api dev",
+    "build": "pnpm -r build",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest --run --config vitest.config.e2e.ts",
+    "test:coverage": "vitest --run --coverage",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "type-check": "tsc --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "clean": "pnpm -r clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@prisma/client": "^5.20.0",
+    "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@typescript-eslint/typescript-estree": "^8.0.0",
+    "@vitest/ui": "^2.0.0",
+    "concurrently": "^8.2.2",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^8.57.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
+    "prisma": "^5.20.0",
+    "typescript": "^5.4.5",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "dependencies": {
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-radio-group": "^1.3.8"
+  }
+}

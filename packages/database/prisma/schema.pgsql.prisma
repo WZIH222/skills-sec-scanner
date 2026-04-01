@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+// ============================================
+// Database Configuration
+// ============================================
+// Default: PostgreSQL via DATABASE_URL env var
+// For local dev without Docker: use SQLite (file:./dev.db)
+// Docker build uses: postgresql://postgres:654321@db:5432/skills_sec
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Organization Models (Phase 3)
+// ============================================
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  name           String
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  apiKeys        ApiKey[]
+  falsePositives FalsePositive[]
+  userRules      UserRule[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  policy    Policy?
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@map("organizations")
+}
+
+model Policy {
+  id             String        @id @default(cuid())
+  mode           String        @default("MODERATE") // STRICT|MODERATE|PERMISSIVE (SQLite: no enum support)
+  organizationId String        @unique
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("policies")
+}
+
+model ApiKey {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyHash      String   @unique
+  encryptedKey String
+  lastFour     String
+  name         String
+  scopes       String   @default("[]") // JSON array as string (SQLite: no array support)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([keyHash])
+  @@index([userId])
+  @@map("api_keys")
+}
+
+// ============================================
+// Scanner Models (Phase 1-2)
+// ============================================
+
+model Scan {
+  id           String    @id @default(cuid())
+  fileId       String    @unique
+  contentHash  String // SHA-256 for cache deduplication
+  filename     String
+  score        Int // 0-100 aggregate risk score
+  scannedAt    DateTime
+  scanDuration Int // milliseconds
+  createdAt    DateTime  @default(now())
+  findings     Finding[]
+  metadata     String? // JSON string (SQLite: no Json type support)
+  status       String    @default("completed") // pending | scanning | completed | failed
+
+  // Folder support: parent-child relationship for folder/file hierarchy
+  parentId String? // ID of parent folder scan (null for top-level files)
+  parent   Scan?   @relation("FolderFiles", fields: [parentId], references: [id], onDelete: Cascade)
+  files    Scan[]  @relation("FolderFiles") // Child scans if this is a folder
+
+  @@index([contentHash])
+  @@index([scannedAt])
+  @@index([parentId]) // Index for efficient folder queries
+  @@index([status]) // Index for efficient status queries
+  @@map("scans")
+}
+
+model Finding {
+  id       String  @id @default(cuid())
+  scanId   String
+  ruleId   String
+  severity String // critical|high|medium|low|info
+  message  String
+  line     Int
+  column   Int
+  code     String? // optional code snippet
+  scan     Scan    @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([severity])
+  @@map("findings")
+}
+
+// ============================================
+// False Positive Management (Phase 3)
+// ============================================
+
+model FalsePositive {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleId     String // Which rule triggered this finding
+  codeHash   String // SHA-256 of code snippet for exact matching
+  filePath   String // File where finding occurred
+  lineNumber Int // Line number for context
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, codeHash, ruleId])
+  @@index([userId])
+  @@map("false_positives")
+}
+
+// ============================================
+// User Rule Management (Phase 5)
+// ============================================
+
+model UserRule {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleId      String // User-generated rule identifier (unique per user)
+  name        String
+  description String?
+  severity    String // critical|high|medium|low|info (SQLite: no enum)
+  category    String // injection|file-access|credentials|network|etc.
+  pattern     String // JSON string of AST pattern
+  message     String
+  enabled     Boolean  @default(true)
+  isAIGenerated Boolean @default(false) // TRUE if AI-generated (requires human review per RULE-10)
+  references  String   @default("[]") // JSON array string of reference URLs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, ruleId])
+  @@index([userId])
+  @@map("user_rules")
+}
+
+// ============================================
+// Built-in Rule Storage (Phase 12)
+// ============================================
+
+model Rule {
+  id          String   @id // Rule ID from JSON file (e.g., "injection-detect-eval")
+  name        String
+  description String?
+  severity    String // critical|high|medium|low|info
+  category    String // injection|file-access|credentials|network|etc.
+  pattern     String // JSON string of AST pattern object
+  message     String
+  enabled     Boolean  @default(true)
+  references  String   @default("[]") // JSON array string of URLs
+  isBuiltIn   Boolean  @default(true) // TRUE = core rules from JSON, FALSE = reserved for future use
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("rules")
+}
+
+// ============================================
+// System Settings (Phase 11)
+// ============================================
+
+model SystemSettings {
+  id        String   @id @default("global")
+  // AI Configuration
+  aiProviderType String @default("openai") // openai | anthropic | custom
+  aiApiKey      String @default("") // Encrypted API key
+  aiBaseUrl     String @default("")
+  aiModel       String @default("")
+  // Security
+  defaultPolicy String @default("MODERATE") // STRICT | MODERATE | PERMISSIVE
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}

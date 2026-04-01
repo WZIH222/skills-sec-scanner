@@ -1,0 +1,25 @@
+{
+  "id": "unsafe-deserialization",
+  "name": "Unsafe JSON Deserialization",
+  "severity": "high",
+  "category": "deserialization",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "JSON",
+      "property": "parse"
+    },
+    "arguments": [
+      {
+        "type": "Identifier"
+      }
+    ]
+  },
+  "message": "JSON.parse() with user input can lead to prototype pollution - use reviver function to sanitize",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse",
+    "https://xygeni.io/zh-CN/blog/json-stringify-when-json-stringify-leads-to-insecure-deserialization/"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "injection-function-constructor",
+  "name": "Detect Function constructor",
+  "severity": "high",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "Identifier",
+      "name": "Function"
+    }
+  },
+  "message": "Function constructor can create code from strings, similar to eval()",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function"
+  ]
+}
