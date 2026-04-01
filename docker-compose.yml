@@ -5,7 +5,8 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 654321
+      #set a strong password here for production use
+      POSTGRES_PASSWORD: your_password
       POSTGRES_DB: skills_sec
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -40,8 +41,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # Database - hardcoded for Docker
-      DATABASE_URL: postgresql://postgres:654321@db:5432/skills_sec
+      # Database - change password here if you change it in the db service
+      DATABASE_URL: postgresql://postgres:your_password@db:5432/skills_sec
       # Redis - no password for simplified setup
       REDIS_URL: redis://redis:6379
       # Security - stable keys for Docker (generated once, must persist across restarts)
@@ -62,8 +63,8 @@ services:
       api:
         condition: service_started
     environment:
-      # Database - hardcoded for Docker
-      DATABASE_URL: postgresql://postgres:654321@db:5432/skills_sec
+      # Database - change password here if you change it in the db service
+      DATABASE_URL: postgresql://postgres:your_password@db:5432/skills_sec
       # Redis - no password for simplified setup
       REDIS_URL: redis://redis:6379
       # Security - stable keys for Docker (same as API for decryption)

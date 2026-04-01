@@ -136,6 +136,7 @@ packages/
 #    - JWT_SECRET (must be identical for both api and web)
 #    - DATABASE_URL
 #    - REDIS_URL
+#    - PGDB_password
 
 # 2. Build and start
 docker-compose up --build
