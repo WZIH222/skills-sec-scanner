@@ -1,0 +1,19 @@
+{
+  "id": "no-console-log",
+  "name": "No console.log() in Production",
+  "severity": "low",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "console",
+      "property": "log"
+    }
+  },
+  "message": "console.log() should be removed in production code to avoid exposing sensitive information.",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/API/console/log"
+  ]
+}

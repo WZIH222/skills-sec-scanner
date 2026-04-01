@@ -1,0 +1,15 @@
+{
+  "id": "sensitive-data-aws-key",
+  "name": "AWS Access Key ID Exposed",
+  "severity": "high",
+  "category": "credentials",
+  "enabled": true,
+  "pattern": {
+    "type": "Literal",
+    "prefix": "AKIA"
+  },
+  "message": "Hardcoded AWS Access Key ID detected - rotate this key immediately (Note: String prefix matching only - may have false positives)",
+  "references": [
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"
+  ]
+}

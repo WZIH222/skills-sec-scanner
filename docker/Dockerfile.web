@@ -1,0 +1,32 @@
+# Stage 1: Build
+FROM node:24-bookworm AS builder
+WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+COPY . .
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+RUN echo "shamefully-hoist=true" > .npmrc
+RUN pnpm install
+# Use PostgreSQL schema for Docker builds
+RUN cp packages/database/prisma/schema.pgsql.prisma packages/database/prisma/schema.prisma
+RUN pnpm --filter @skills-sec/database generate
+RUN pnpm --filter @skills-sec/scanner build
+ENV NODE_PATH=/app/node_modules
+ENV NEXT_DISABLE_GOOGLE_FONTS=1
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_TYPES=1
+RUN pnpm --filter @skills-sec/web build
+
+# Stage 2: Production
+FROM node:20-bookworm-slim AS runner
+WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl libssl3 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/web/.next ./.next
+COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder /app/packages ./packages
+RUN mkdir -p .next/static && cp -r /app/apps/web/.next/static ./.next/ 2>/dev/null || true
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
+CMD ["sh", "-c", "NEXT_BIN=$(ls /app/node_modules/.pnpm/next@*/node_modules/next/dist/bin/next 2>/dev/null | head -1) && node $NEXT_BIN start -p 3000"]

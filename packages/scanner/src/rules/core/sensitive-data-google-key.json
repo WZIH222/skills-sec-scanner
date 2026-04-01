@@ -1,0 +1,13 @@
+{
+  "id": "sensitive-data-google-key",
+  "name": "Google API Key Exposed",
+  "severity": "high",
+  "category": "credentials",
+  "enabled": true,
+  "pattern": {
+    "type": "Literal",
+    "prefix": "AIza"
+  },
+  "message": "Hardcoded Google API key detected - rotate this key immediately (Note: String prefix matching only - may have false positives)",
+  "references": []
+}

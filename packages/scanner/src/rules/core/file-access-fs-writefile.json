@@ -1,0 +1,19 @@
+{
+  "id": "file-access-fs-writefile",
+  "name": "Detect fs.writeFile() calls",
+  "severity": "medium",
+  "category": "file-access",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "fs",
+      "property": "writeFile"
+    }
+  },
+  "message": "fs.writeFile() can modify files on the system",
+  "references": [
+    "https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback"
+  ]
+}

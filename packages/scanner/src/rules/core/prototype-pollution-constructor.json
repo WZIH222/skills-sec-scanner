@@ -1,0 +1,21 @@
+{
+  "id": "prototype-pollution-constructor",
+  "name": "Prototype Pollution via Constructor.prototype",
+  "severity": "critical",
+  "category": "prototype-pollution",
+  "enabled": true,
+  "pattern": {
+    "type": "AssignmentExpression",
+    "left": {
+      "type": "MemberExpression",
+      "property": {
+        "name": "prototype"
+      }
+    }
+  },
+  "message": "Direct assignment to constructor.prototype can lead to prototype pollution (RCE)",
+  "references": [
+    "https://github.com/advisories/GHSA-wf6x-7x77-mvgw",
+    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-29063"
+  ]
+}

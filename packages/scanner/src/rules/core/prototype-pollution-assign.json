@@ -1,0 +1,35 @@
+{
+  "id": "prototype-pollution-assign",
+  "name": "Prototype Pollution via Object.assign",
+  "severity": "critical",
+  "category": "prototype-pollution",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "Object",
+      "property": "assign"
+    },
+    "arguments": [
+      {},
+      {
+        "type": "ObjectExpression",
+        "properties": [
+          {
+            "type": "Property",
+            "key": {
+              "type": "Identifier",
+              "name": "__proto__"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "message": "Object.assign() with __proto__ property can lead to prototype pollution (RCE)",
+  "references": [
+    "https://github.com/advisories/GHSA-wf6x-7x77-mvgw",
+    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-29063"
+  ]
+}

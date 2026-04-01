@@ -1,0 +1,18 @@
+{
+  "id": "injection-detect-eval",
+  "name": "Detect eval() calls",
+  "severity": "critical",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "Identifier",
+      "name": "eval"
+    }
+  },
+  "message": "eval() allows arbitrary code execution and is extremely dangerous",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval"
+  ]
+}

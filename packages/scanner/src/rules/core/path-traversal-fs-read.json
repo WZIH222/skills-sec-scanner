@@ -1,0 +1,20 @@
+{
+  "id": "path-traversal-fs-read",
+  "name": "Path Traversal via fs.readFile",
+  "severity": "medium",
+  "category": "path-traversal",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "fs",
+      "property": "readFile"
+    }
+  },
+  "message": "fs.readFile() with user input can lead to path traversal",
+  "references": [
+    "https://arxiv.org/html/2505.20186v1",
+    "https://www.endorlabs.com/learn/cve-2025-68428-critical-path-traversal-in-jspdf"
+  ]
+}

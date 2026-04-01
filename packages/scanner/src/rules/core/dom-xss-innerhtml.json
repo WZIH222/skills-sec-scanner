@@ -1,0 +1,18 @@
+{
+  "id": "dom-xss-innerhtml",
+  "name": "DOM XSS via innerHTML/outerHTML",
+  "severity": "medium",
+  "category": "dom-xss",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "property": "innerHTML"
+    }
+  },
+  "message": "innerHTML/outerHTML with user input can lead to DOM XSS",
+  "references": [
+    "https://codeql.github.com/docs/codeql-language-guides/data-flow-cheat-sheet-for-javascript/"
+  ]
+}

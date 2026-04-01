@@ -1,0 +1,13 @@
+{
+  "id": "sensitive-data-github-token",
+  "name": "GitHub Token Exposed",
+  "severity": "high",
+  "category": "credentials",
+  "enabled": true,
+  "pattern": {
+    "type": "Literal",
+    "prefix": "ghp_"
+  },
+  "message": "Hardcoded GitHub token detected - rotate this token immediately (Note: String prefix matching only - may have false positives)",
+  "references": []
+}

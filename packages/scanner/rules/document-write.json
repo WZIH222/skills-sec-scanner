@@ -1,0 +1,19 @@
+{
+  "id": "no-document-write",
+  "name": "No document.write() Usage",
+  "severity": "high",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "document",
+      "property": "write"
+    }
+  },
+  "message": "Using document.write() can lead to XSS vulnerabilities and overwrite the entire document.",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/API/Document/write"
+  ]
+}

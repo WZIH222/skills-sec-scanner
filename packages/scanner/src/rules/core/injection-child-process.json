@@ -1,0 +1,18 @@
+{
+  "id": "injection-child-process",
+  "name": "Detect child_process execution",
+  "severity": "high",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "Identifier",
+      "name": "exec"
+    }
+  },
+  "message": "child_process.exec() can execute arbitrary shell commands",
+  "references": [
+    "https://nodejs.org/api/child_process.html"
+  ]
+}

@@ -1,0 +1,62 @@
+# Dependencies
+node_modules
+
+# SQLite databases (local dev) - must be in project for dev but ignored for secrets
+packages/database/prisma/dev.db
+packages/database/prisma/*.db
+packages/database/.env
+
+# Environment variables (NEVER commit .env - it contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Environment variable templates (safe to commit as examples)
+!.env.example
+
+# SQLite databases (local dev)
+*.db
+*.db-journal
+
+# Next.js build output (regenerated on build)
+apps/web/.next/
+next/.next/
+
+# TypeScript build info (regenerated)
+**/*.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
+# Scanner package build output (regenerated)
+packages/scanner/dist/
+
+# Python parser cache
+__pycache__/
+*.pyc
+
+# Temporary files
+tmp/
+*.tmp
+*.temp
+
+# Browser cookies / auth artifacts
+cookies.txt
+
+# Claude Code settings (user-specific, not tracked)
+.claude/
+
+# Docker build artifacts
+docker/*.tar
+docker/*/*.tar
+
+# Build logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+coverage/
+*.coverage

@@ -1,0 +1,19 @@
+{
+  "id": "dom-xss-document-write",
+  "name": "DOM XSS via document.write",
+  "severity": "medium",
+  "category": "dom-xss",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "object": "document",
+      "property": "write"
+    }
+  },
+  "message": "document.write() with user input can lead to DOM XSS",
+  "references": [
+    "https://codeql.github.com/docs/codeql-language-guides/data-flow-cheat-sheet-for-javascript/"
+  ]
+}

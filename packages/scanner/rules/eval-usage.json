@@ -1,0 +1,18 @@
+{
+  "id": "no-eval",
+  "name": "No eval() Usage",
+  "severity": "critical",
+  "category": "injection",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "Identifier",
+      "name": "eval"
+    }
+  },
+  "message": "Using eval() is dangerous as it can execute arbitrary code. Consider using safer alternatives.",
+  "references": [
+    "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval"
+  ]
+}

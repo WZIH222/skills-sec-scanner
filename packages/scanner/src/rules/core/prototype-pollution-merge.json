@@ -1,0 +1,19 @@
+{
+  "id": "prototype-pollution-merge",
+  "name": "Prototype Pollution via Merge Functions",
+  "severity": "critical",
+  "category": "prototype-pollution",
+  "enabled": true,
+  "pattern": {
+    "type": "CallExpression",
+    "callee": {
+      "type": "MemberExpression",
+      "property": "merge"
+    }
+  },
+  "message": "Merge functions (lodash.merge, $.extend, etc.) with user input can lead to prototype pollution",
+  "references": [
+    "https://github.com/advisories/GHSA-wf6x-7x77-mvgw",
+    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-29063"
+  ]
+}
