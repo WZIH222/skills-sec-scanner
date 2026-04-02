@@ -15,14 +15,6 @@
 
 ---
 
-## GitHub About
-
-> AI Skills security scanner with static analysis + AI semantic detection for prompt injection, code execution, credential leaks, and unsafe data flows.
-
-**Suggested topics**: `ai-security`, `security-scanner`, `static-analysis`, `prompt-injection`, `typescript`, `nextjs`, `nestjs`, `monorepo`
-
----
-
 ## Overview
 
 As AI Agents and openclaw become mainstream, **AI Skills** (tool plugins) are the dominant way to extend AI capabilities. However, Skills files may contain malicious code or prompt instructions that pose serious threats to user system security and data safety.
