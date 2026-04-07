@@ -68,7 +68,7 @@ export async function GET(
 
     // Verify user owns this scan (check in metadata or userId field)
     const scanUserId = (scan as any).userId || (typeof scan.metadata === 'object' ? (scan.metadata as any)?.userId : null)
-    if (scanUserId && scanUserId !== userId) {
+    if (!scanUserId || scanUserId !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -212,7 +212,7 @@ export async function DELETE(
 
     // Verify user owns this scan (check in metadata or userId field)
     const scanUserId = (scan as any).userId || (typeof scan.metadata === 'object' ? (scan.metadata as any)?.userId : null)
-    if (scanUserId && scanUserId !== userId) {
+    if (!scanUserId || scanUserId !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
