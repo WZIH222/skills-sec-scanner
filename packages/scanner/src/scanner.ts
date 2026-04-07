@@ -189,9 +189,42 @@ export class Scanner {
     // like checking if new rules detected or if it's a prompt-type skill
     const shouldRunAI = options?.aiEnabled && this.deps.aiEngine
 
-    if (shouldRunAI) {
+    // INJECT-02: Mandatory prompt injection pre-flight check
+    // This gate MUST be called before analyzeCode() per D-02
+    let injectionBlocked = false
+    if (shouldRunAI && this.deps.aiEngine) {
       try {
-        const isAvailable = await this.deps.aiEngine!.isAvailable()
+        const injectionResult = await this.deps.aiEngine.detectPromptInjection(content)
+        if (injectionResult.detected) {
+          // Block AI analysis — safety over availability (per D-02)
+          injectionBlocked = true
+          // Add high-severity finding for the injection
+          findings = [{
+            ruleId: 'prompt-injection-detected',
+            severity: 'critical' as const,
+            message: `Prompt injection detected: ${injectionResult.jailbreakType || 'unknown'}`,
+            location: { line: 1, column: 1 },
+            code: content.substring(0, 200), // first 200 chars for context
+          }]
+          // Set AI metadata — AI analysis was BLOCKED, not failed
+          aiAnalyzed = false
+          aiProvider = undefined
+        }
+      } catch (error) {
+        // If detection itself fails, log warning and proceed with AI analysis
+        console.warn('Prompt injection detection failed, proceeding with AI analysis:', error)
+      }
+    }
+
+    if (shouldRunAI && this.deps.aiEngine && !injectionBlocked) {
+      // INJECT-03: Size limit check before AI analysis
+      const MAX_AI_INPUT_SIZE = parseInt(process.env.MAX_AI_INPUT_SIZE || '102400', 10)
+      if (content.length > MAX_AI_INPUT_SIZE) {
+        throw new Error(`File content (${content.length} bytes) exceeds MAX_AI_INPUT_SIZE (${MAX_AI_INPUT_SIZE} bytes)`)
+      }
+
+      try {
+        const isAvailable = await this.deps.aiEngine.isAvailable()
         if (isAvailable) {
           // Check AI cache first
           let aiResult: import('./ai-engine').AIAnalysisResult | null = null
