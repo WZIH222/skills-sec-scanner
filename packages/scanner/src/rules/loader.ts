@@ -70,11 +70,12 @@ export class RuleLoader {
             this.config?.severityOverrides?.[rule.id] || rule.severity
 
           // Convert Rule to PatternRule
+          // The JSON pattern is validated by Zod schema; cast to PatternPattern for type safety
           const patternRule: PatternRule = {
             id: rule.id,
             severity,
             category: rule.category,
-            pattern: rule.pattern,
+            pattern: rule.pattern as unknown as PatternRule['pattern'],
             message: rule.message,
           }
 

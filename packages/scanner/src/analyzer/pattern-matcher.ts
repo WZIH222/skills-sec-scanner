@@ -9,13 +9,26 @@ import { TSESTree } from '@typescript-eslint/typescript-estree'
 import { Finding, Severity } from '../types'
 
 /**
+ * Pattern matching shape — a recursive tagged union of AST node patterns
+ */
+export type PatternPattern =
+  | { type: 'CallExpression'; callee?: PatternPattern; arguments?: PatternPattern[] }
+  | { type: 'MemberExpression'; object?: PatternPattern | string; property?: PatternPattern | string }
+  | { type: 'Literal'; value?: unknown; prefix?: string }
+  | { type: 'Identifier'; name: string }
+  | { type: 'AssignmentExpression'; left?: PatternPattern; right?: PatternPattern }
+  | { type: 'ObjectExpression'; properties: PatternPattern[] }
+  | { type: 'Property'; key: PatternPattern }
+  | { type: 'IdentifierShorthand'; name: string }
+
+/**
  * Pattern rule for AST matching
  */
 export interface PatternRule {
   id: string
   severity: Severity
   category: string
-  pattern: any
+  pattern: PatternPattern
   message: string
 }
 
@@ -134,13 +147,13 @@ export class PatternMatcher {
   /**
    * Check if a node matches a pattern
    */
-  private matchesPattern(node: TSESTree.Node, pattern: any): boolean {
+  private matchesPattern(node: TSESTree.Node, pattern: PatternPattern): boolean {
     if (!pattern) {
       return false
     }
 
-    // If pattern has no type but has a name property, check if it's an Identifier
-    if (!pattern.type && pattern.name !== undefined) {
+    // Identifier shorthand pattern (e.g., { name: 'eval' } matches any Identifier named 'eval')
+    if (pattern.type === 'IdentifierShorthand') {
       if (node.type === 'Identifier') {
         const identifier = node as TSESTree.Identifier
         return identifier.name === pattern.name
@@ -173,9 +186,12 @@ export class PatternMatcher {
     }
 
     // For Identifier, check name
-    if (pattern.type === 'Identifier' || (pattern.name !== undefined && node.type === 'Identifier')) {
-      const identifier = node as TSESTree.Identifier
-      return identifier.name === pattern.name
+    if (pattern.type === 'Identifier') {
+      if (node.type === 'Identifier') {
+        const identifier = node as TSESTree.Identifier
+        return identifier.name === pattern.name
+      }
+      return false
     }
 
     // For Literal, check prefix and value
@@ -220,7 +236,8 @@ export class PatternMatcher {
   /**
    * Match AssignmentExpression (left and right)
    */
-  private matchesAssignmentExpression(node: TSESTree.AssignmentExpression, pattern: any): boolean {
+  private matchesAssignmentExpression(node: TSESTree.AssignmentExpression, pattern: PatternPattern): boolean {
+    if (pattern.type !== 'AssignmentExpression') return false
     // Check left if specified
     if (pattern.left) {
       const left = node.left
@@ -247,7 +264,8 @@ export class PatternMatcher {
   /**
    * Match CallExpression (callee and arguments)
    */
-  private matchesCallExpression(node: TSESTree.CallExpression, pattern: any): boolean {
+  private matchesCallExpression(node: TSESTree.CallExpression, pattern: PatternPattern): boolean {
+    if (pattern.type !== 'CallExpression') return false
     // Check callee if specified
     if (pattern.callee) {
       const callee = node.callee
@@ -303,7 +321,8 @@ export class PatternMatcher {
   /**
    * Match MemberExpression
    */
-  private matchesMemberExpression(node: TSESTree.MemberExpression, pattern: any): boolean {
+  private matchesMemberExpression(node: TSESTree.MemberExpression, pattern: PatternPattern): boolean {
+    if (pattern.type !== 'MemberExpression') return false
     const computed = node.computed
 
     // Check object
@@ -338,7 +357,7 @@ export class PatternMatcher {
   /**
    * Match ObjectExpression (check if any property matches pattern)
    */
-  private matchesObjectExpression(node: TSESTree.ObjectExpression, patternProperties: any[]): boolean {
+  private matchesObjectExpression(node: TSESTree.ObjectExpression, patternProperties: PatternPattern[]): boolean {
     // If pattern specifies properties, check if ANY property matches
     for (const propPattern of patternProperties) {
       for (const prop of node.properties) {
@@ -353,7 +372,7 @@ export class PatternMatcher {
   /**
    * Match Property (check key)
    */
-  private matchesProperty(node: TSESTree.Property, keyPattern: any): boolean {
+  private matchesProperty(node: TSESTree.Property, keyPattern: PatternPattern): boolean {
     if (!node.key) {
       return false
     }
