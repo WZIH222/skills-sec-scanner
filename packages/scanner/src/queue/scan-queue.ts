@@ -6,8 +6,24 @@
  */
 
 import { Queue, Job, JobsOptions } from 'bullmq'
+import { z } from 'zod'
 import { RedisService } from '../storage/cache/client'
 import type { ScanOptions } from '../types'
+
+/**
+ * Zod schema for validating ScanJobData at queue entry (VALID-03)
+ */
+const ScanJobDataSchema = z.object({
+  fileId: z.string(),
+  contentHash: z.string(),
+  content: z.string(),
+  filename: z.string(),
+  options: z.object({
+    userId: z.string().optional(),
+    aiEnabled: z.boolean().optional(),
+    policyMode: z.string().optional(),
+  }),
+})
 
 /**
  * Scan job data structure
@@ -86,7 +102,9 @@ export class ScanQueueService {
    * @returns Job ID
    */
   async addScanJob(data: ScanJobData): Promise<string> {
-    const job = await this.queue.add('scan', data)
+    // Validate with Zod before queue entry (VALID-03)
+    const validated = ScanJobDataSchema.parse(data)
+    const job = await this.queue.add('scan', validated)
 
     if (!job) {
       throw new Error('Failed to add job to queue')
