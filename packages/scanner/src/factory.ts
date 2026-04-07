@@ -25,6 +25,8 @@ import { TaintTracker } from './analyzer'
 import { RiskScorer } from './analyzer'
 import { Scanner, ScannerDeps } from './scanner'
 import type { AIProviderConfig } from './ai-engine'
+import type { Severity } from './types'
+import type { PatternRule } from './analyzer/pattern-matcher'
 import { FalsePositiveFilter } from './storage'
 import { PolicyEnforcer } from './policy'
 
@@ -36,7 +38,7 @@ export interface ScannerOptions {
   databaseUrl?: string
   ruleConfig?: {
     disabledRules?: string[]
-    severityOverrides?: Record<string, any>
+    severityOverrides?: Record<string, Severity>
   }
   // NEW: AI provider configuration
   aiProvider?: AIProviderConfig
@@ -48,7 +50,7 @@ export interface ScannerOptions {
 
 // Module-level caches to avoid recreating heavy objects
 // These are shared across ALL scanner instances
-let cachedRules: any[] | undefined
+let cachedRules: PatternRule[] | undefined
 let cachedRuleDir: string | undefined
 let cachedRuleLoader: RuleLoader | undefined
 let cachedPatternMatcher: PatternMatcher | undefined
@@ -243,7 +245,7 @@ async function createScannerDeps(options?: ScannerOptions): Promise<ScannerDeps>
 
   // Rules
   const ruleLoader = new RuleLoader(options?.ruleConfig)
-  let rules: any[] = []
+  let rules: PatternRule[] = []
   try {
     // Get the directory of this module
     const __dirname = dirname(fileURLToPath(import.meta.url))
