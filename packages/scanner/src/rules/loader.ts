@@ -6,7 +6,7 @@
  */
 
 import { promises as fs } from 'fs'
-import { join } from 'path'
+import { join, resolve as pathResolve } from 'path'
 import { Rule, validateRule } from './schema'
 import { PatternRule } from '../analyzer/pattern-matcher'
 import { Severity } from '../types'
@@ -43,6 +43,23 @@ export class RuleLoader {
 
       for (const file of jsonFiles) {
         const filePath = join(ruleDir, file)
+
+        // VALID-06: Path traversal protection — resolve symlinks and verify path stays within ruleDir
+        let resolvedPath: string
+        try {
+          resolvedPath = pathResolve(filePath)
+        } catch {
+          // Could not resolve path — skip this file and continue
+          console.warn(`[RuleLoader] Could not resolve path for ${file}, skipping: ${error instanceof Error ? error.message : String(error)}`)
+          continue
+        }
+
+        const resolvedRuleDir = pathResolve(ruleDir)
+        if (!resolvedPath.startsWith(resolvedRuleDir + import.meta.sep)) {
+          // Path traversal detected — skip this file but continue loading others
+          console.warn(`[RuleLoader] Path traversal detected in rule file ${file}, skipping`)
+          continue
+        }
 
         try {
           // Read and parse the JSON file
