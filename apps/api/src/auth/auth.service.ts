@@ -2,17 +2,8 @@ import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-
-export interface RegisterDto {
-  email: string;
-  password: string;
-  name: string;
-}
-
-export interface LoginDto {
-  email: string;
-  password: string;
-}
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 export interface AuthResponse {
   accessToken: string;
