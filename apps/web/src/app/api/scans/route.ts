@@ -6,6 +6,7 @@ import type { AIProviderConfig, AIProviderType } from '@skills-sec/scanner'
 import { PolicyMode } from '@skills-sec/scanner'
 import { queueFolderFiles } from '@/lib/folder-queue'
 import { getAISettings } from '@/lib/settings'
+import { parsePageParams, assertUUID } from '@/lib/api-utils'
 
 /**
  * GET /api/scans
@@ -36,21 +37,13 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = payload.userId
+    assertUUID(userId, 'userId')
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = parseInt(searchParams.get('limit') || '20', 10)
+    const { page, limit } = parsePageParams(searchParams)
     const sort = searchParams.get('sort') || 'scannedAt_desc'
     const status = searchParams.get('status') || 'all'
-
-    // Validate parameters
-    if (page < 1 || limit < 1 || limit > 100) {
-      return NextResponse.json(
-        { error: 'Invalid pagination parameters' },
-        { status: 400 }
-      )
-    }
 
     // Parse sort option
     const [sortField, sortDirection] = sort.split('_')
