@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
   const token = authHeader?.startsWith('Bearer ')
     ? authHeader.substring(7)
     : request.cookies?.get('auth-token')?.value
-    || url.searchParams.get('token')
 
   if (!token) {
     return new Response('Unauthorized', { status: 401 })
@@ -196,7 +195,12 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': (() => {
+        const origin = request.headers.get('origin')
+        const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || []
+        return origin && allowedOrigins.includes(origin) ? origin : ''
+      })(),
+      'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Allow-Headers': 'Cache-Control',
     },
   })
