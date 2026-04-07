@@ -4,6 +4,19 @@ import { verifyToken } from '@/lib/auth';
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
+  // VALID-05: Reject requests with Content-Length > 10MB before routing
+  const contentLength = request.headers.get('content-length')
+  if (contentLength !== null) {
+    const size = parseInt(contentLength, 10)
+    const MAX_BODY_SIZE = 10 * 1024 * 1024 // 10MB
+    if (size > MAX_BODY_SIZE) {
+      return NextResponse.json(
+        { error: 'Request body too large. Maximum size is 10MB.' },
+        { status: 413 }
+      )
+    }
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/register', '/api/auth/login', '/api/auth/register'];
   const isApiScans = pathname === '/api/scans' && request.method === 'POST';
