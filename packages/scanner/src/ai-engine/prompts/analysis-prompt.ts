@@ -6,6 +6,7 @@
  */
 
 import type { Finding } from '../../types'
+import { sanitizeQuotedUserCode } from './sanitize'
 
 /**
  * Build analysis prompt for AI security analysis
@@ -18,9 +19,7 @@ export function buildAnalysisPrompt(code: string, findings: Finding[]): string {
   return `You are a security expert analyzing AI Skills files for threats. Analyze the following code and provide detailed findings.
 
 CODE TO ANALYZE:
-\`\`\`
-${code}
-\`\`\`
+${sanitizeQuotedUserCode(code)}
 
 EXISTING STATIC FINDINGS:
 ${findings.length > 0 ? findings.map(f =>
