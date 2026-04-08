@@ -15,8 +15,16 @@ export class PrismaService {
   private prisma: PrismaClient
 
   private constructor() {
+    const databaseUrl = process.env.DATABASE_URL ?? ''
+    const urlWithTimeout = databaseUrl.includes('connect_timeout=')
+      ? databaseUrl
+      : databaseUrl + '&connect_timeout=5'
+
     this.prisma = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+      datasources: {
+        db: { url: urlWithTimeout },
+      },
     })
   }
 
