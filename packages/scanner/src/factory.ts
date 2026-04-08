@@ -114,8 +114,17 @@ export async function createScanner(options?: ScannerOptions): Promise<Scanner> 
       cachedRuleLoader = ruleLoader
       console.log(`[Factory] Cached ${cachedRules.length} security rules from ${ruleDir}`)
     } catch (error) {
-      console.warn('Rules directory not found, continuing with empty rules')
-      cachedRules = []
+      throw new Error(
+        `Failed to load security rules from ${ruleDir}: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+
+    // CONFIG-02: Fail-fast if no rules loaded
+    if (cachedRules.length === 0) {
+      throw new Error(
+        'No security rules loaded. Scanner cannot operate with an empty rule set. ' +
+        'Please ensure rule files exist in the rules directory.'
+      )
     }
   }
 
