@@ -104,6 +104,25 @@ export class ScanQueueService {
   async addScanJob(data: ScanJobData): Promise<string> {
     // Validate with Zod before queue entry (VALID-03)
     const validated = ScanJobDataSchema.parse(data)
+
+    // QUEUE-01: Per-user rate limit check — reject if user has 5+ active jobs
+    const userId = validated.options?.userId
+    if (userId) {
+      const redis = RedisService.getInstance().client
+      if (redis && redis.status === 'ready') {
+        const activeKey = `SCAN:active:${userId}`
+        const activeCount = await redis.zcard(activeKey)
+        if (activeCount >= 5) {
+          throw new Error(
+            `Per-user rate limit exceeded: user ${userId} already has 5 active scan jobs. ` +
+            `Please wait for a job to complete before submitting a new scan.`
+          )
+        }
+      } else {
+        console.warn(`[ScanQueue] Redis unavailable, skipping rate limit check for user ${userId}`)
+      }
+    }
+
     const job = await this.queue.add('scan', validated)
 
     if (!job) {
