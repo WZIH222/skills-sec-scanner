@@ -6,10 +6,11 @@
  */
 
 import { promises as fs } from 'fs'
-import { join, resolve as pathResolve } from 'path'
+import { join, resolve as pathResolve, sep as pathSep } from 'path'
 import { Rule, validateRule } from './schema'
 import { PatternRule } from '../analyzer/pattern-matcher'
 import { Severity } from '../types'
+import { validateRegexComplexity } from './regex-validator'
 
 /**
  * Rule configuration options
@@ -48,14 +49,14 @@ export class RuleLoader {
         let resolvedPath: string
         try {
           resolvedPath = pathResolve(filePath)
-        } catch {
+        } catch (err) {
           // Could not resolve path — skip this file and continue
-          console.warn(`[RuleLoader] Could not resolve path for ${file}, skipping: ${error instanceof Error ? error.message : String(error)}`)
+          console.warn(`[RuleLoader] Could not resolve path for ${file}, skipping: ${err instanceof Error ? err.message : String(err)}`)
           continue
         }
 
         const resolvedRuleDir = pathResolve(ruleDir)
-        if (!resolvedPath.startsWith(resolvedRuleDir + import.meta.sep)) {
+        if (!resolvedPath.startsWith(resolvedRuleDir + pathSep)) {
           // Path traversal detected — skip this file but continue loading others
           console.warn(`[RuleLoader] Path traversal detected in rule file ${file}, skipping`)
           continue
@@ -76,6 +77,18 @@ export class RuleLoader {
           }
 
           const rule = validationResult.data
+
+          // QUEUE-03: Validate regex complexity if pattern is a string (ReDoS prevention)
+          // AST-based patterns (objects) are not regex and are not checked
+          if (typeof rule.pattern === 'string') {
+            const complexityResult = validateRegexComplexity(rule.pattern)
+            if (!complexityResult.valid) {
+              console.warn(
+                `[RuleLoader] Skipping rule ${rule.name || rule.id}: ${complexityResult.reason}`
+              )
+              continue
+            }
+          }
 
           // Check if rule is disabled
           if (this.config?.disabledRules?.includes(rule.id)) {
