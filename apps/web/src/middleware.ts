@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { validateCsrfOrigin } from '@/lib/csrf-validator';
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
@@ -46,6 +47,16 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(new URL('/login', request.url));
     }
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  }
+
+  // CSRF validation for mutating requests
+  const csrfCheck = validateCsrfOrigin(request)
+  if (!csrfCheck.valid) {
+    const isPageRoute = !pathname.startsWith('/api')
+    if (isPageRoute) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    return csrfCheck.error
   }
 
   const requestHeaders = new Headers(request.headers);
