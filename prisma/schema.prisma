@@ -154,7 +154,7 @@ model UserRule {
   id             String   @id @default(cuid())
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organizationId String   @default(cuid()) // For org-scoped rule filtering
+  organizationId String?  @default(cuid()) // For org-scoped rule filtering (optional first to allow SQLite migration)
   ruleId         String // User-generated rule identifier (unique per user)
   name           String
   description    String?
