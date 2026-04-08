@@ -1,7 +1,10 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@skills-sec/database'
 import { eventBus, type FolderProgressEvent, type FolderCompleteEvent } from '@/lib/sse-event-bus'
+import { sseConnectionManager } from '@/lib/sse-connection'
+import { RateLimiter, getRateLimitIdentifier } from '@/lib/rate-limiter'
+import { getAllowedOrigins } from '@/lib/cors-validator'
 
 /**
  * SSE Event Types
@@ -52,6 +55,28 @@ export async function GET(request: NextRequest) {
 
   if (!payload) {
     return new Response('Invalid token', { status: 401 })
+  }
+
+  // RATE-01: Apply rate limiting to SSE connection establishment
+  const rateLimiter = new RateLimiter(30, 60000) // 30 SSE connects per minute
+  const identifier = `sse:${payload.userId || 'anonymous'}`
+  const isLimited = await rateLimiter.isRateLimited(identifier)
+  if (isLimited) {
+    return NextResponse.json(
+      { error: 'Too many SSE connection attempts. Please wait.' },
+      { status: 429 }
+    )
+  }
+
+  // RATE-02: Check per-user SSE connection limit
+  if (payload.userId) {
+    const canConnect = await sseConnectionManager.acquireConnection(payload.userId)
+    if (!canConnect) {
+      return NextResponse.json(
+        { error: 'Too many SSE connections. Only 1 connection allowed per user.' },
+        { status: 429 }
+      )
+    }
   }
 
   // Get jobId from query parameters
@@ -123,10 +148,24 @@ export async function GET(request: NextRequest) {
         eventBus.on('folder:progress', folderProgressHandler)
         eventBus.on('folder:complete', folderCompleteHandler)
 
+        // Refresh SSE connection TTL every 60 seconds
+        if (payload.userId) {
+          sseConnectionManager.refreshConnection(payload.userId)
+        }
+        const heartbeatInterval = setInterval(() => {
+          if (payload.userId) {
+            sseConnectionManager.refreshConnection(payload.userId)
+          }
+        }, 60000)
+
         // Clean up listeners on connection close
         const cleanup = () => {
           eventBus.removeListener('folder:progress', folderProgressHandler)
           eventBus.removeListener('folder:complete', folderCompleteHandler)
+          clearInterval(heartbeatInterval)
+          if (payload.userId) {
+            sseConnectionManager.releaseConnection(payload.userId)
+          }
         }
 
         // Track if controller has been closed to prevent double-close
@@ -138,6 +177,7 @@ export async function GET(request: NextRequest) {
             isClosed = true
             cleanup()
             clearTimeout(timeout)
+            clearInterval(heartbeatInterval)
             try {
               controller.close()
             } catch (e) {
@@ -184,6 +224,9 @@ export async function GET(request: NextRequest) {
         }
 
         // Close connection after sending event
+        if (payload.userId) {
+          sseConnectionManager.releaseConnection(payload.userId)
+        }
         controller.close()
       }
     },
@@ -197,8 +240,13 @@ export async function GET(request: NextRequest) {
       'Connection': 'keep-alive',
       'Access-Control-Allow-Origin': (() => {
         const origin = request.headers.get('origin')
-        const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || []
-        return origin && allowedOrigins.includes(origin) ? origin : ''
+        const allowedOrigins = getAllowedOrigins()
+        if (!origin || !allowedOrigins.includes(origin)) {
+          // Return a dummy origin that will cause browser CORS error
+          // Never return '*' or empty string which bypasses CORS security
+          return 'null' // Browser will block with CORS error
+        }
+        return origin
       })(),
       'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Allow-Headers': 'Cache-Control',
