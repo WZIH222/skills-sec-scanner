@@ -28,6 +28,7 @@ model User {
   name           String
   organizationId String?
   organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  role           String          @default("MEMBER") // ADMIN | MEMBER
   apiKeys        ApiKey[]
   falsePositives FalsePositive[]
   userRules      UserRule[]
@@ -35,6 +36,7 @@ model User {
   updatedAt      DateTime        @updatedAt
 
   @@index([email])
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -149,24 +151,26 @@ model FalsePositive {
 // ============================================
 
 model UserRule {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ruleId      String // User-generated rule identifier (unique per user)
-  name        String
-  description String?
-  severity    String // critical|high|medium|low|info (SQLite: no enum)
-  category    String // injection|file-access|credentials|network|etc.
-  pattern     String // JSON string of AST pattern
-  message     String
-  enabled     Boolean  @default(true)
-  isAIGenerated Boolean @default(false) // TRUE if AI-generated (requires human review per RULE-10)
-  references  String   @default("[]") // JSON array string of reference URLs
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String   @default(cuid()) // For org-scoped rule filtering
+  ruleId         String // User-generated rule identifier (unique per user)
+  name           String
+  description    String?
+  severity       String // critical|high|medium|low|info (SQLite: no enum)
+  category       String // injection|file-access|credentials|network|etc.
+  pattern        String // JSON string of AST pattern
+  message        String
+  enabled        Boolean  @default(true)
+  isAIGenerated  Boolean  @default(false) // TRUE if AI-generated (requires human review per RULE-10)
+  references     String   @default("[]") // JSON array string of reference URLs
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([userId, ruleId])
   @@index([userId])
+  @@index([organizationId])
   @@map("user_rules")
 }
 
