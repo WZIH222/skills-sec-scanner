@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const user = await createUser(email, password, name)
 
     // Generate token
-    const token = await generateToken(user.id, user.email)
+    const token = await generateToken(user.id, user.email, user.organizationId || '')
 
     // Set httpOnly cookie
     const response = NextResponse.json(

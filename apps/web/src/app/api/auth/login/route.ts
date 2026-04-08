@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate token
-    const token = await generateToken(user.id, user.email)
+    const token = await generateToken(user.id, user.email, user.organizationId || '')
 
     // Set httpOnly cookie
     const response = NextResponse.json(
