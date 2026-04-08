@@ -176,18 +176,19 @@ model UserRule {
 // ============================================
 
 model Rule {
-  id          String   @id // Rule ID from JSON file (e.g., "injection-detect-eval")
-  name        String
-  description String?
-  severity    String // critical|high|medium|low|info
-  category    String // injection|file-access|credentials|network|etc.
-  pattern     String // JSON string of AST pattern object
-  message     String
-  enabled     Boolean  @default(true)
-  references  String   @default("[]") // JSON array string of URLs
-  isBuiltIn   Boolean  @default(true) // TRUE = core rules from JSON, FALSE = reserved for future use
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id // Rule ID from JSON file (e.g., "injection-detect-eval")
+  name           String
+  description    String?
+  severity       String // critical|high|medium|low|info
+  category       String // injection|file-access|credentials|network|etc.
+  pattern        String // JSON string of AST pattern object
+  message        String
+  enabled        Boolean  @default(true)
+  references     String   @default("[]") // JSON array string of URLs
+  isBuiltIn      Boolean  @default(true) // TRUE = core rules from JSON, FALSE = reserved for future use
+  organizationId String?  @default(cuid()) // Org-scoped: each org gets their own built-in rules copy
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("rules")
 }
