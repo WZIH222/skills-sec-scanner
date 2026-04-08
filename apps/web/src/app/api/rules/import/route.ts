@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = payload.userId
+    const organizationId = payload.organizationId || ''
 
     // Parse request body
     const body = await request.json()
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     let rulesToImport = validRules
     if (mode === 'replace') {
       const ruleRepository = new RuleRepository(prisma)
-      const existingRules = await ruleRepository.getRulesForUser(userId, { isBuiltIn: false })
+      const existingRules = await ruleRepository.getRulesForUser(userId, organizationId, { isBuiltIn: false })
       const existingRuleIds = new Set(existingRules.map(r => ('ruleId' in r ? r.ruleId : r.id)))
 
       const skippedRules: string[] = []
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Import the valid rules
     const ruleRepository = new RuleRepository(prisma)
     const rulesJson = JSON.stringify(rulesToImport)
-    const result = await ruleRepository.importRules(userId, rulesJson)
+    const result = await ruleRepository.importRules(userId, organizationId, rulesJson)
 
     // Combine validation errors with import results
     const allErrors = [...errors, ...result.errors]
