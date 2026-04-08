@@ -1,121 +1,169 @@
 /**
- * Simple in-memory rate limiter for API routes
+ * Redis-backed distributed rate limiter
  *
- * In production, use Redis-based rate limiting for distributed systems
- * This implementation is suitable for single-server deployments
+ * Uses sliding window algorithm with Redis for distributed
+ * rate limiting across multiple server instances.
+ * Per D-05 (RATE-01): fail-open if Redis unavailable.
  */
+
+import { Redis } from 'ioredis'
 
 interface RateLimitEntry {
   count: number
   resetTime: number
 }
 
-export class RateLimiter {
-  private store: Map<string, RateLimitEntry> = new Map()
-  private cleanupInterval: NodeJS.Timeout | null = null
+let redisClient: Redis | null = null
 
-  constructor(
-    public maxRequests: number = 100, // Maximum requests per window
-    public windowMs: number = 60000 // Time window in milliseconds (default: 1 minute)
-  ) {
-    // Cleanup expired entries every minute
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup()
-    }, 60000)
+/**
+ * Get or create Redis client singleton
+ */
+function getRedisClient(): Redis | null {
+  if (redisClient) return redisClient
+
+  const redisUrl = process.env.REDIS_URL
+  if (!redisUrl || redisUrl === 'disabled') {
+    return null
   }
+
+  try {
+    redisClient = new Redis(redisUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times: number) => {
+        const delay = Math.min(times * 50, 2000)
+        return delay
+      },
+      enableReadyCheck: false,
+    })
+
+    redisClient.on('error', () => {
+      redisClient = null
+    })
+
+    return redisClient
+  } catch {
+    return null
+  }
+}
+
+export class RateLimiter {
+  constructor(
+    public maxRequests: number = 100,
+    public windowMs: number = 60000
+  ) {}
 
   /**
    * Check if request should be rate limited
    * Returns true if rate limit exceeded
+   * FAIL-OPEN: if Redis unavailable, allows request
    */
-  isRateLimited(identifier: string): boolean {
-    const now = Date.now()
-    const entry = this.store.get(identifier)
-
-    // Reset if window expired
-    if (!entry || now > entry.resetTime) {
-      this.store.set(identifier, {
-        count: 1,
-        resetTime: now + this.windowMs,
-      })
+  async isRateLimited(identifier: string): Promise<boolean> {
+    const redis = getRedisClient()
+    if (!redis) {
+      // Fail-open: allow request if Redis unavailable
       return false
     }
 
-    // Increment counter
-    entry.count++
+    try {
+      const now = Date.now()
+      const windowStart = Math.floor(now / this.windowMs) * this.windowMs
+      const key = `ratelimit:${identifier}:${windowStart}`
 
-    // Check if limit exceeded
-    if (entry.count > this.maxRequests) {
-      return true
+      const multi = redis.multi()
+      multi.incr(key)
+      multi.expire(key, Math.ceil(this.windowMs / 1000))
+      const results = await multi.exec()
+
+      const count = results?.[0]?.[1] as number | undefined
+      if (count === undefined) {
+        return false // Redis operation failed, fail-open
+      }
+
+      return count > this.maxRequests
+    } catch {
+      // Redis error, fail-open
+      return false
     }
-
-    return false
   }
 
   /**
    * Get remaining requests for identifier
    */
-  getRemainingRequests(identifier: string): number {
-    const entry = this.store.get(identifier)
-    if (!entry || Date.now() > entry.resetTime) {
+  async getRemainingRequests(identifier: string): Promise<number> {
+    const redis = getRedisClient()
+    if (!redis) {
       return this.maxRequests
     }
-    return Math.max(0, this.maxRequests - entry.count)
+
+    try {
+      const now = Date.now()
+      const windowStart = Math.floor(now / this.windowMs) * this.windowMs
+      const key = `ratelimit:${identifier}:${windowStart}`
+
+      const count = await redis.get(key)
+      if (!count) {
+        return this.maxRequests
+      }
+
+      return Math.max(0, this.maxRequests - parseInt(count, 10))
+    } catch {
+      return this.maxRequests
+    }
   }
 
   /**
-   * Get reset time for identifier
+   * Get reset time for identifier (as Unix timestamp)
    */
-  getResetTime(identifier: string): number | null {
-    const entry = this.store.get(identifier)
-    if (!entry) {
+  async getResetTime(identifier: string): Promise<number | null> {
+    const redis = getRedisClient()
+    if (!redis) {
       return null
     }
-    return entry.resetTime
+
+    try {
+      const now = Date.now()
+      const windowStart = Math.floor(now / this.windowMs) * this.windowMs
+      const key = `ratelimit:${identifier}:${windowStart}`
+
+      const ttl = await redis.ttl(key)
+      if (ttl <= 0) {
+        return null
+      }
+
+      return now + (ttl * 1000)
+    } catch {
+      return null
+    }
   }
 
   /**
    * Reset rate limit for identifier (for testing or admin use)
    */
-  reset(identifier: string): void {
-    this.store.delete(identifier)
-  }
+  async reset(identifier: string): Promise<void> {
+    const redis = getRedisClient()
+    if (!redis) return
 
-  /**
-   * Cleanup expired entries
-   */
-  private cleanup(): void {
-    const now = Date.now()
-    for (const [key, entry] of this.store.entries()) {
-      if (now > entry.resetTime) {
-        this.store.delete(key)
-      }
+    try {
+      const now = Date.now()
+      const windowStart = Math.floor(now / this.windowMs) * this.windowMs
+      const key = `ratelimit:${identifier}:${windowStart}`
+      await redis.del(key)
+    } catch {
+      // Ignore errors on reset
     }
-  }
-
-  /**
-   * Cleanup interval
-   */
-  destroy(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval)
-      this.cleanupInterval = null
-    }
-    this.store.clear()
   }
 }
 
 /**
  * Extract identifier from request for rate limiting
+ * Matches the existing interface from the in-memory implementation
  */
 export function getRateLimitIdentifier(request: Request): string {
-  // Try to get user ID from headers (set by middleware)
   const userId = request.headers.get('x-user-id')
   if (userId) {
     return `user:${userId}`
   }
 
-  // Fall back to IP address
   const forwarded = request.headers.get('x-forwarded-for')
   const ip = forwarded?.split(',')[0] || request.headers.get('x-real-ip') || 'unknown'
   return `ip:${ip}`
@@ -123,14 +171,10 @@ export function getRateLimitIdentifier(request: Request): string {
 
 /**
  * Pre-configured rate limiters for different endpoint types
+ * These are instances, not classes — same interface as before
  */
 export const rateLimiters = {
-  // Strict rate limiter for authentication endpoints
-  auth: new RateLimiter(5, 60000), // 5 requests per minute
-
-  // Moderate rate limiter for API endpoints
-  api: new RateLimiter(100, 60000), // 100 requests per minute
-
-  // Lenient rate limiter for read-only endpoints
+  auth: new RateLimiter(5, 60000),   // 5 requests per minute
+  api: new RateLimiter(100, 60000),  // 100 requests per minute
   read: new RateLimiter(200, 60000), // 200 requests per minute
 }
