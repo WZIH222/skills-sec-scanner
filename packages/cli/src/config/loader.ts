@@ -7,6 +7,7 @@
 
 import { readFile } from 'fs/promises'
 import yaml from 'js-yaml'
+import { z } from 'zod'
 import { join } from 'path'
 
 export interface CliConfig {
@@ -14,6 +15,12 @@ export interface CliConfig {
   aiProvider?: 'openai' | 'anthropic'
   policyMode?: 'strict' | 'moderate' | 'permissive'
 }
+
+const CliConfigSchema = z.object({
+  aiEnabled: z.boolean().optional(),
+  aiProvider: z.enum(['openai', 'anthropic']).optional(),
+  policyMode: z.enum(['strict', 'moderate', 'permissive']).optional(),
+})
 
 /**
  * Load config from .skills-sec.yaml file
@@ -27,6 +34,19 @@ export async function loadConfig(cwd?: string): Promise<CliConfig> {
   try {
     const content = await readFile(configPath, 'utf-8')
     const config = yaml.load(content) as CliConfig
+
+    // CONFIG-01: Validate config with Zod
+    try {
+      CliConfigSchema.parse(config)
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        throw new Error(
+          `Invalid CLI config: ${err.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+        )
+      }
+      throw err
+    }
+
     return config || {}
   } catch (error) {
     if ((error as any).code === 'ENOENT') {
