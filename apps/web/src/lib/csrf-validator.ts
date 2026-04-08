@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getAllowedOrigins } from './cors-validator'
 
 const mutatingMethods = ['POST', 'PUT', 'DELETE', 'PATCH']
 
@@ -18,7 +19,8 @@ const mutatingMethods = ['POST', 'PUT', 'DELETE', 'PATCH']
  *
  * Returns false (blocked) if:
  * - Neither Origin nor Referer is set on a mutating request, OR
- * - Origin/Referer does not match any allowed origin
+ * - Origin/Referer does not match any allowed origin, OR
+ * - In production: ALLOWED_ORIGINS is not configured
  */
 export function validateCsrfOrigin(request: NextRequest): { valid: boolean; error?: NextResponse } {
   // Only validate mutating requests
@@ -29,10 +31,21 @@ export function validateCsrfOrigin(request: NextRequest): { valid: boolean; erro
   const origin = request.headers.get('origin')
   const referer = request.headers.get('referer')
 
-  // Get allowed origins from environment
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || []
+  // Use the shared CORS validator's validated origins
+  const allowedOrigins = getAllowedOrigins()
 
-  // If no allowed origins configured, skip validation (fail open for development)
+  // FAIL-FAST in production: origin must be configured for CSRF protection to work
+  if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+    return {
+      valid: false,
+      error: NextResponse.json(
+        { error: 'CSRF protection misconfigured: ALLOWED_ORIGINS not set' },
+        { status: 500 }
+      ),
+    }
+  }
+
+  // Fail-open in development if ALLOWED_ORIGINS is empty
   if (allowedOrigins.length === 0) {
     return { valid: true }
   }
@@ -44,9 +57,14 @@ export function validateCsrfOrigin(request: NextRequest): { valid: boolean; erro
 
   // Check Referer header (must start with an allowed origin)
   if (referer) {
-    const refererOrigin = referer.split('/').slice(0, 3).join('/')
-    if (allowedOrigins.some(o => refererOrigin.startsWith(o.replace(/\/$/, '')))) {
-      return { valid: true }
+    try {
+      const refererUrl = new URL(referer)
+      const refererOrigin = refererUrl.origin
+      if (allowedOrigins.some(o => refererOrigin.startsWith(o.replace(/\/$/, '')))) {
+        return { valid: true }
+      }
+    } catch {
+      // Invalid referer URL — treat as missing
     }
   }
 
