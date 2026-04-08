@@ -1,23 +1,37 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { AppLogger, appLogger } from './common/logger';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Swagger/OpenAPI documentation (must be before setGlobalPrefix)
-  const config = new DocumentBuilder()
-    .setTitle('Skills Security Scanner API')
-    .setDescription('REST API for detecting security threats in AI Skills files')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .addTag('auth', 'Authentication endpoints')
-    .addTag('health', 'Health check endpoints')
-    .build();
+  // Security headers via Helmet
+  app.use(helmet());
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/v1/docs', app, document);
+  // Register centralized logger with secret redaction
+  app.useLogger(appLogger);
+
+  // Global exception filter — prevents stack traces from reaching clients
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Swagger/OpenAPI documentation — only mounted in non-production
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Skills Security Scanner API')
+      .setDescription('REST API for detecting security threats in AI Skills files')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .addTag('auth', 'Authentication endpoints')
+      .addTag('health', 'Health check endpoints')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/v1/docs', app, document);
+  }
 
   // Global prefix for API versioning
   app.setGlobalPrefix('api/v1');
@@ -40,8 +54,7 @@ async function bootstrap() {
   const port = process.env.API_PORT || 3001;
   await app.listen(port);
 
-  console.log(`🚀 API Server running on http://localhost:${port}`);
-  console.log(`📚 Swagger documentation at http://localhost:${port}/api/docs`);
+  appLogger.log(`🚀 API Server running on http://localhost:${port}/api/v1`);
 }
 
 bootstrap();
