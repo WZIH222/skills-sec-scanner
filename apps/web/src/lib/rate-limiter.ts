@@ -36,8 +36,12 @@ function getRedisClient(): Redis | null {
       enableReadyCheck: false,
     })
 
-    redisClient.on('error', () => {
-      redisClient = null
+    redisClient.on('error', (err) => {
+      console.error('[RateLimiter] Redis client error:', err.message)
+      if (redisClient) {
+        redisClient.disconnect()
+        redisClient = null
+      }
     })
 
     return redisClient

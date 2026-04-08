@@ -54,9 +54,9 @@ export async function authMiddleware(request: NextRequest): Promise<{
  * Rate limiter interface (avoiding circular type issues)
  */
 interface IRateLimiter {
-  isRateLimited(identifier: string): boolean
-  getRemainingRequests(identifier: string): number
-  getResetTime(identifier: string): number | null
+  isRateLimited(identifier: string): Promise<boolean>
+  getRemainingRequests(identifier: string): Promise<number>
+  getResetTime(identifier: string): Promise<number | null>
   maxRequests: number
 }
 
