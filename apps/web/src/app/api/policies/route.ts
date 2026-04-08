@@ -36,7 +36,13 @@ export async function GET(request: NextRequest) {
     // Get user with organization and policy
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        organizationId: true,
+        role: true,
+        createdAt: true,
         organization: {
           include: {
             policy: true,
@@ -81,12 +87,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Check if user is admin (first user in org is admin)
-    const orgUsers = await prisma.user.count({
-      where: { organizationId: user.organizationId },
-    })
-    const isAdmin = user.organization?.createdAt && user.createdAt === user.organization.createdAt ||
-                    (user as any).role === 'ADMIN'
+    // Check if user is admin based on role field
+    const isAdmin = user.role === 'ADMIN'
 
     const policy = user.organization?.policy || {
       id: '',
@@ -148,7 +150,13 @@ export async function PUT(request: NextRequest) {
     // Get user with organization
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        organizationId: true,
+        role: true,
+        createdAt: true,
         organization: {
           include: {
             policy: true,
@@ -164,12 +172,8 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check if user is admin
-    const orgUsers = await prisma.user.findMany({
-      where: { organizationId: user.organizationId },
-      orderBy: { createdAt: 'asc' },
-    })
-    const isAdmin = orgUsers[0]?.id === user.id || (user as any).role === 'ADMIN'
+    // Check if user is admin based on role field
+    const isAdmin = user.role === 'ADMIN'
 
     if (!isAdmin) {
       return NextResponse.json(
