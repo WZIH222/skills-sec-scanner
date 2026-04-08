@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = payload.userId
+    const organizationId = payload.organizationId || ''
 
     // Parse query parameters
     const { searchParams } = new URL(request.url)
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
     // Create RuleRepository and fetch rules
     await ensureRulesSeeded()
     const ruleRepository = new RuleRepository(prisma)
-    const rules = await ruleRepository.getRulesForUser(userId, filters)
+    const rules = await ruleRepository.getRulesForUser(userId, organizationId, filters)
 
     return NextResponse.json(
       { rules },
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = payload.userId
+    const organizationId = payload.organizationId || ''
 
     // Parse request body
     const body = await request.json()
@@ -188,7 +190,7 @@ export async function POST(request: NextRequest) {
 
     // Create RuleRepository and create rule
     const ruleRepository = new RuleRepository(prisma)
-    const rule = await ruleRepository.createRule(userId, {
+    const rule = await ruleRepository.createRule(userId, organizationId, {
       ruleId,
       name,
       description,
