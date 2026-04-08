@@ -11,6 +11,7 @@ const JWT_SECRET = new TextEncoder().encode(jwtSecret)
 export interface JWTPayload {
   userId: string
   email: string
+  organizationId: string
   iat: number
   exp: number
 }
@@ -18,8 +19,8 @@ export interface JWTPayload {
 /**
  * Generate JWT token for user
  */
-export async function generateToken(userId: string, email: string): Promise<string> {
-  const token = await new SignJWT({ userId, email })
+export async function generateToken(userId: string, email: string, organizationId: string): Promise<string> {
+  const token = await new SignJWT({ userId, email, organizationId })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('8h')
