@@ -3,6 +3,7 @@ import { verifyToken } from './auth'
 import { logger, LogLevel } from './logger'
 import { RateLimiter, getRateLimitIdentifier, rateLimiters } from './rate-limiter'
 import { generateRequestId } from './api-response'
+import { getAllowedOrigins } from './cors-validator'
 
 /**
  * Enhanced authentication middleware
@@ -62,16 +63,16 @@ interface IRateLimiter {
 /**
  * Rate limiting middleware
  */
-export function rateLimitMiddleware(
+export async function rateLimitMiddleware(
   request: NextRequest,
   limiter: IRateLimiter
-): { isAllowed: boolean; error?: NextResponse } {
+): Promise<{ isAllowed: boolean; error?: NextResponse }> {
   const identifier = getRateLimitIdentifier(request as any)
-  const isRateLimited = limiter.isRateLimited(identifier)
+  const isRateLimited = await limiter.isRateLimited(identifier)
 
   if (isRateLimited) {
-    const remaining = limiter.getRemainingRequests(identifier)
-    const resetTime = limiter.getResetTime(identifier)
+    const remaining = await limiter.getRemainingRequests(identifier)
+    const resetTime = await limiter.getResetTime(identifier)
     const retryAfter = resetTime ? Math.ceil((resetTime - Date.now()) / 1000) : 60
 
     return {
@@ -123,13 +124,14 @@ export function loggingMiddleware(request: NextRequest): {
  */
 export function corsMiddleware(request: NextRequest): NextResponse | null {
   const origin = request.headers.get('origin')
+  const allowedOrigins = getAllowedOrigins()
 
   // Handle preflight requests
   if (request.method === 'OPTIONS') {
     return new NextResponse(null, {
       status: 200,
       headers: {
-        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Origin': origin && allowedOrigins.includes(origin) ? origin : 'null',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
         'Access-Control-Max-Age': '86400',
