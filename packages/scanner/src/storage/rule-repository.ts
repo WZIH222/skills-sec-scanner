@@ -33,7 +33,7 @@ import {
  */
 export class RuleRepository {
   private ruleLoader: RuleLoader
-  private builtInRulesCache: BuiltInRule[] | null = null
+  private builtInRulesCache: Map<string, BuiltInRule[]> = new Map()
 
   constructor(
     private prisma: PrismaClient,
@@ -46,15 +46,16 @@ export class RuleRepository {
    * Get all rules for a user, combining built-in and custom rules
    *
    * @param userId - User ID to fetch rules for
+   * @param organizationId - Organization ID to filter rules by
    * @param filters - Optional filters for severity, category, enabled, isBuiltIn
    * @returns UnifiedRule[] with isBuiltIn flag set appropriately
    */
-  async getRulesForUser(userId: string, filters?: RuleFilters): Promise<UnifiedRule[]> {
-    // Load built-in rules and user custom rules in parallel
+  async getRulesForUser(userId: string, organizationId: string, filters?: RuleFilters): Promise<UnifiedRule[]> {
+    // Load built-in rules and user custom rules in parallel, both filtered by organizationId
     const [builtInRules, userRules] = await Promise.all([
-      this.loadBuiltInRules(),
+      this.loadBuiltInRules(organizationId),
       this.prisma.userRule.findMany({
-        where: { userId },
+        where: { userId, organizationId },
       }),
     ])
 
@@ -105,12 +106,13 @@ export class RuleRepository {
    * Get a single rule by ID (built-in or custom)
    *
    * @param userId - User ID who owns the rule
+   * @param organizationId - Organization ID to filter rules by
    * @param ruleId - Rule ID to fetch (ruleId for custom, id for built-in)
    * @returns UnifiedRule or null if not found
    */
-  async getRuleById(userId: string, ruleId: string): Promise<UnifiedRule | null> {
+  async getRuleById(userId: string, organizationId: string, ruleId: string): Promise<UnifiedRule | null> {
     // First check built-in rules by their id
-    const builtInRules = await this.loadBuiltInRules()
+    const builtInRules = await this.loadBuiltInRules(organizationId)
     const builtInRule = builtInRules.find(r => r.id === ruleId)
     if (builtInRule) {
       return builtInRule
@@ -118,7 +120,7 @@ export class RuleRepository {
 
     // Then check custom rules
     const userRule = await this.prisma.userRule.findFirst({
-      where: { userId, ruleId },
+      where: { userId, organizationId, ruleId },
     })
 
     if (!userRule) {
@@ -147,14 +149,15 @@ export class RuleRepository {
    * Create a new custom rule for a user
    *
    * @param userId - User ID creating the rule
+   * @param organizationId - Organization ID for org-scoped rule creation
    * @param ruleData - Rule data for the new rule
    * @returns Created UnifiedRule
    * @throws Error if ruleId already exists for user
    */
-  async createRule(userId: string, ruleData: CreateRuleData): Promise<UnifiedRule> {
+  async createRule(userId: string, organizationId: string, ruleData: CreateRuleData): Promise<UnifiedRule> {
     // Check for duplicate ruleId for this user
     const existing = await this.prisma.userRule.findFirst({
-      where: { userId, ruleId: ruleData.ruleId },
+      where: { userId, organizationId, ruleId: ruleData.ruleId },
     })
     if (existing) {
       throw new Error(`Rule with ID '${ruleData.ruleId}' already exists for this user`)
@@ -182,6 +185,7 @@ export class RuleRepository {
     const userRule = await this.prisma.userRule.create({
       data: {
         userId,
+        organizationId,
         ruleId: ruleData.ruleId,
         name: ruleData.name,
         description: ruleData.description,
@@ -218,15 +222,16 @@ export class RuleRepository {
    * Update an existing custom rule
    *
    * @param userId - User ID who owns the rule
+   * @param organizationId - Organization ID to filter rules by
    * @param ruleId - Rule ID to update
    * @param ruleData - Updated rule data
    * @returns Updated UnifiedRule
    * @throws Error if rule is built-in or not found
    */
-  async updateRule(userId: string, ruleId: string, ruleData: UpdateRuleData): Promise<UnifiedRule> {
+  async updateRule(userId: string, organizationId: string, ruleId: string, ruleData: UpdateRuleData): Promise<UnifiedRule> {
     // Find the existing rule
     const existing = await this.prisma.userRule.findFirst({
-      where: { userId, ruleId },
+      where: { userId, organizationId, ruleId },
     })
     if (!existing) {
       throw new Error(`Rule '${ruleId}' not found for this user`)
@@ -271,18 +276,19 @@ export class RuleRepository {
    * Delete a custom rule
    *
    * @param userId - User ID who owns the rule
+   * @param organizationId - Organization ID to filter rules by
    * @param ruleId - Rule ID to delete
    * @throws Error if rule is built-in or not found
    */
-  async deleteRule(userId: string, ruleId: string): Promise<void> {
+  async deleteRule(userId: string, organizationId: string, ruleId: string): Promise<void> {
     // Built-in rules cannot be deleted
-    const builtInRules = await this.loadBuiltInRules()
+    const builtInRules = await this.loadBuiltInRules(organizationId)
     if (builtInRules.some(r => r.id === ruleId)) {
       throw new Error('Built-in rules cannot be deleted')
     }
 
     const existing = await this.prisma.userRule.findFirst({
-      where: { userId, ruleId },
+      where: { userId, organizationId, ruleId },
     })
     if (!existing) {
       throw new Error(`Rule '${ruleId}' not found for this user`)
@@ -300,14 +306,15 @@ export class RuleRepository {
    * For built-in rules, returns the current state (no persistence needed).
    *
    * @param userId - User ID who owns the rule
+   * @param organizationId - Organization ID to filter rules by
    * @param ruleId - Rule ID to toggle
    * @param enabled - New enabled state
    * @returns UnifiedRule with updated enabled state
    * @throws Error if rule not found
    */
-  async toggleRule(userId: string, ruleId: string, enabled: boolean): Promise<UnifiedRule> {
+  async toggleRule(userId: string, organizationId: string, ruleId: string, enabled: boolean): Promise<UnifiedRule> {
     // Check if it's a built-in rule first
-    const builtInRules = await this.loadBuiltInRules()
+    const builtInRules = await this.loadBuiltInRules(organizationId)
     const builtInRule = builtInRules.find(r => r.id === ruleId)
     if (builtInRule) {
       // Built-in rules can't be disabled persistently - return as-is
@@ -316,7 +323,7 @@ export class RuleRepository {
 
     // Custom rule - update in database
     const existing = await this.prisma.userRule.findFirst({
-      where: { userId, ruleId },
+      where: { userId, organizationId, ruleId },
     })
     if (!existing) {
       throw new Error(`Rule '${ruleId}' not found for this user`)
@@ -349,11 +356,12 @@ export class RuleRepository {
    * Export rules as JSON array
    *
    * @param userId - User ID to export rules for
+   * @param organizationId - Organization ID to filter rules by
    * @param ruleIds - Optional array of specific ruleIds to export (exports all if not provided)
    * @returns JSON string of rule array
    */
-  async exportRules(userId: string, ruleIds?: string[]): Promise<string> {
-    const rules = await this.getRulesForUser(userId)
+  async exportRules(userId: string, organizationId: string, ruleIds?: string[]): Promise<string> {
+    const rules = await this.getRulesForUser(userId, organizationId)
 
     // Filter to custom rules only and optionally by ruleIds
     const customRules = rules.filter(r => !r.isBuiltIn)
@@ -381,10 +389,11 @@ export class RuleRepository {
    * Import rules from JSON array
    *
    * @param userId - User ID importing rules
+   * @param organizationId - Organization ID for org-scoped rule import
    * @param rulesJson - JSON string of rules to import
    * @returns ImportResult with counts of imported, updated, and errors
    */
-  async importRules(userId: string, rulesJson: string): Promise<ImportResult> {
+  async importRules(userId: string, organizationId: string, rulesJson: string): Promise<ImportResult> {
     const result: ImportResult = {
       imported: 0,
       updated: 0,
@@ -417,7 +426,7 @@ export class RuleRepository {
 
         // Check if rule already exists for this user
         const existing = await this.prisma.userRule.findFirst({
-          where: { userId, ruleId: validated.id },
+          where: { userId, organizationId, ruleId: validated.id },
         })
 
         if (existing) {
@@ -442,6 +451,7 @@ export class RuleRepository {
           await this.prisma.userRule.create({
             data: {
               userId,
+              organizationId,
               ruleId: validated.id,
               name: validated.name,
               description: validated.description,
@@ -470,16 +480,17 @@ export class RuleRepository {
    *
    * Uses caching to avoid repeated database queries.
    *
+   * @param organizationId - Organization ID to filter built-in rules by
    * @returns BuiltInRule[] array
    */
-  private async loadBuiltInRules(): Promise<BuiltInRule[]> {
-    if (this.builtInRulesCache) {
-      return this.builtInRulesCache
+  private async loadBuiltInRules(organizationId: string): Promise<BuiltInRule[]> {
+    if (this.builtInRulesCache.has(organizationId)) {
+      return this.builtInRulesCache.get(organizationId)!
     }
 
-    // Load built-in rules from database
+    // Load built-in rules from database, filtered by organizationId
     const dbRules = await this.prisma.rule.findMany({
-      where: { isBuiltIn: true },
+      where: { isBuiltIn: true, organizationId },
     })
 
     const rules: BuiltInRule[] = dbRules.map(r => ({
@@ -495,7 +506,7 @@ export class RuleRepository {
       isBuiltIn: true,
     }))
 
-    this.builtInRulesCache = rules
+    this.builtInRulesCache.set(organizationId, rules)
     return rules
   }
 }
