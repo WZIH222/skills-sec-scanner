@@ -15,12 +15,13 @@ const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
 const auth_service_1 = require("./auth.service");
+const require_jwt_secret_1 = require("./require-jwt-secret");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(configService, authService) {
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: configService.get('JWT_SECRET') || 'your-secret-key-change-in-production',
+            secretOrKey: (0, require_jwt_secret_1.requireJwtSecret)(configService),
         });
         this.configService = configService;
         this.authService = authService;

@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "NestJS REST API for Skills Security Scanner",
   "private": true,
-  "type": "module",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\"",

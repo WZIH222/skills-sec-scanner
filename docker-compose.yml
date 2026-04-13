@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      #set a strong password here for production use
+      #set a strong password here for production use 
       POSTGRES_PASSWORD: your_password
       POSTGRES_DB: skills_sec
     volumes:

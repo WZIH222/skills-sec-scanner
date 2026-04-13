@@ -1,14 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-export interface RegisterDto {
-    email: string;
-    password: string;
-    name: string;
-}
-export interface LoginDto {
-    email: string;
-    password: string;
-}
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 export interface AuthResponse {
     accessToken: string;
     user: {
@@ -24,9 +17,9 @@ export declare class AuthService {
     register(dto: RegisterDto): Promise<AuthResponse>;
     login(dto: LoginDto): Promise<AuthResponse>;
     validateUser(userId: string): Promise<{
-        id: string;
         email: string;
         name: string;
+        id: string;
         organizationId: string;
         createdAt: Date;
     }>;

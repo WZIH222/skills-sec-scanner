@@ -16,9 +16,14 @@ export class PrismaService {
 
   private constructor() {
     const databaseUrl = process.env.DATABASE_URL ?? ''
-    const urlWithTimeout = databaseUrl.includes('connect_timeout=')
+    // connect_timeout is a PostgreSQL param — do not append for SQLite (file: URLs)
+    const isSqlite = databaseUrl.startsWith('file:')
+    const alreadyHasTimeout = databaseUrl.includes('connect_timeout=')
+    const urlWithTimeout = isSqlite || alreadyHasTimeout
       ? databaseUrl
-      : databaseUrl + '&connect_timeout=5'
+      : databaseUrl.includes('?')
+        ? databaseUrl + '&connect_timeout=5'
+        : databaseUrl + '?connect_timeout=5'
 
     this.prisma = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],

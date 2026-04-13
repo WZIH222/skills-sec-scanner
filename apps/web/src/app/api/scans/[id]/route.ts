@@ -66,8 +66,9 @@ export async function GET(
       )
     }
 
-    // Verify user owns this scan (check in metadata or userId field)
-    const scanUserId = (scan as any).userId || (typeof scan.metadata === 'object' ? (scan.metadata as any)?.userId : null)
+    // Verify user owns this scan (userId stored in metadata JSON string)
+    const authMetadata = scan.metadata ? JSON.parse(scan.metadata) : {}
+    const scanUserId = authMetadata.userId
     if (!scanUserId || scanUserId !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },
@@ -210,8 +211,9 @@ export async function DELETE(
       )
     }
 
-    // Verify user owns this scan (check in metadata or userId field)
-    const scanUserId = (scan as any).userId || (typeof scan.metadata === 'object' ? (scan.metadata as any)?.userId : null)
+    // Verify user owns this scan (userId stored in metadata JSON string)
+    const authMetadata = scan.metadata ? JSON.parse(scan.metadata) : {}
+    const scanUserId = authMetadata.userId
     if (!scanUserId || scanUserId !== userId) {
       return NextResponse.json(
         { error: 'Forbidden' },

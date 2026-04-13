@@ -28,14 +28,18 @@ export function parsePageParams(
 }
 
 /**
- * Validate that a string is a valid UUID v4 format.
+ * Validate that a string is a valid ID format.
+ * Accepts both UUID v4 and Prisma CUID formats.
  * @param id - The string to validate
  * @param fieldName - Optional field name for error message
- * @throws NextResponse with status 400 if the string is not a valid UUID
+ * @throws NextResponse with status 400 if the string is not a valid ID
  */
 export function assertUUID(id: string, fieldName: string = 'ID'): void {
+  // UUID v4: 8-4-4-4-12 hex digits with version 4 at position 14
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  if (!UUID_REGEX.test(id)) {
+  // Prisma CUID: 25 chars starting with 'c', followed by 24 lowercase alphanumerics
+  const CUID_REGEX = /^c[0-9a-z]{24}$/i
+  if (!UUID_REGEX.test(id) && !CUID_REGEX.test(id)) {
     throw NextResponse.json(
       { error: `Invalid ${fieldName}` },
       { status: 400 }

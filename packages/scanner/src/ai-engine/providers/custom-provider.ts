@@ -30,7 +30,7 @@ export class CustomProvider implements IAIProvider {
     this.client = new OpenAI({
       apiKey: config.apiKey || 'dummy-key', // Some local APIs don't require keys
       baseURL: config.baseURL,
-      timeout: config.timeout || 30000,
+      timeout: config.timeout || 60000,
       maxRetries: config.maxRetries || 0,
     })
     console.info('[CustomProvider] OpenAI client created with baseURL:', config.baseURL)

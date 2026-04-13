@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsc --watch",
-    "build": "tsc && node scripts/fix-esm-extensions.js && node --input-type=module -e \"import{readdirSync,mkdirSync,copyFileSync}from'fs';const src='src/rules/core',dst='dist/rules/core';mkdirSync(dst,{recursive:true});readdirSync(src).filter(f=>f.endsWith('.json')).forEach(f=>copyFileSync(src+'/'+f,dst+'/'+f));console.log('Copied rule files')\"",
+    "build": "tsc && node scripts/fix-esm-extensions.js && node --input-type=module -e \"import{readdirSync,mkdirSync,copyFileSync}from'fs';const src='src/rules/core',dst='dist/rules';mkdirSync(dst,{recursive:true});readdirSync(src).filter(f=>f.endsWith('.json')).forEach(f=>copyFileSync(src+'/'+f,dst+'/'+f));console.log('Copied rule files')\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rm -rf dist",

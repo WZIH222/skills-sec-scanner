@@ -11,10 +11,13 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const passport_1 = require("@nestjs/passport");
 const config_1 = require("@nestjs/config");
+const core_1 = require("@nestjs/core");
+const common_2 = require("@nestjs/common");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const jwt_strategy_1 = require("./jwt.strategy");
 const prisma_service_1 = require("../prisma/prisma.service");
+const require_jwt_secret_1 = require("./require-jwt-secret");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -25,7 +28,7 @@ exports.AuthModule = AuthModule = __decorate([
             jwt_1.JwtModule.registerAsync({
                 inject: [config_1.ConfigService],
                 useFactory: (config) => ({
-                    secret: config.get('JWT_SECRET') || 'your-secret-key-change-in-production',
+                    secret: (0, require_jwt_secret_1.requireJwtSecret)(config),
                     signOptions: {
                         expiresIn: '15m',
                     },
@@ -33,7 +36,19 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, prisma_service_1.PrismaService],
+        providers: [
+            auth_service_1.AuthService,
+            jwt_strategy_1.JwtStrategy,
+            prisma_service_1.PrismaService,
+            {
+                provide: core_1.APP_PIPE,
+                useValue: new common_2.ValidationPipe({
+                    whitelist: true,
+                    forbidNonWhitelisted: true,
+                    transform: true,
+                }),
+            },
+        ],
         exports: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, passport_1.PassportModule],
     })
 ], AuthModule);

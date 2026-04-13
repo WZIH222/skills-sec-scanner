@@ -2,12 +2,6 @@ import { SignJWT, jwtVerify } from 'jose'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@skills-sec/database'
 
-const jwtSecret = process.env.JWT_SECRET
-if (!jwtSecret) {
-  throw new Error('JWT_SECRET environment variable is required')
-}
-const JWT_SECRET = new TextEncoder().encode(jwtSecret)
-
 export interface JWTPayload {
   userId: string
   email: string
@@ -17,9 +11,21 @@ export interface JWTPayload {
 }
 
 /**
+ * Lazily get JWT secret — only resolves at runtime, not during build.
+ */
+function getJwtSecret(): Uint8Array {
+  const jwtSecret = process.env.JWT_SECRET
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET environment variable is required')
+  }
+  return new TextEncoder().encode(jwtSecret)
+}
+
+/**
  * Generate JWT token for user
  */
 export async function generateToken(userId: string, email: string, organizationId: string): Promise<string> {
+  const JWT_SECRET = getJwtSecret()
   const token = await new SignJWT({ userId, email, organizationId })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -34,6 +40,7 @@ export async function generateToken(userId: string, email: string, organizationI
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
+    const JWT_SECRET = getJwtSecret()
     const { payload } = await jwtVerify(token, JWT_SECRET)
     return payload as unknown as JWTPayload
   } catch (error) {

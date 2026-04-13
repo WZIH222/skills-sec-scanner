@@ -1,4 +1,4 @@
-import { Logger, LoggerService } from '@nestjs/common'
+import { ConsoleLogger, LoggerService } from '@nestjs/common'
 
 /**
  * Redact patterns for sensitive environment variables and tokens.
@@ -20,7 +20,7 @@ const REDACT_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
  * - error.stack is suppressed from stdout/stderr in production
  * - Uses NestJS built-in Logger as the base class
  */
-export class AppLogger extends Logger implements LoggerService {
+export class AppLogger extends ConsoleLogger implements LoggerService {
   /**
    * Redact sensitive values from log input.
    * Handles environment variables and Bearer tokens.

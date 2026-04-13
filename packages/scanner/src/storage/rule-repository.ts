@@ -488,9 +488,10 @@ export class RuleRepository {
       return this.builtInRulesCache.get(organizationId)!
     }
 
-    // Load built-in rules from database, filtered by organizationId
+    // Load built-in rules from database (global, no org filter needed)
+    // Built-in rules have organizationId = null (global scope)
     const dbRules = await this.prisma.rule.findMany({
-      where: { isBuiltIn: true, organizationId },
+      where: { isBuiltIn: true },
     })
 
     const rules: BuiltInRule[] = dbRules.map(r => ({
